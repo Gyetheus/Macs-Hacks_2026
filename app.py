@@ -1,3 +1,6 @@
+import numpy as np
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtWidgets import (
     QApplication,
@@ -11,6 +14,7 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QScrollArea,
     QWidget,
+    QMessageBox,
 )
 from CalculationEngine import MathEngine
 import re
@@ -58,6 +62,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Cooler Calculator")
 
         self.engine = MathEngine()
+        self.graph_window = GraphWindow(self.engine)
 
         # 1. Create the overarching Horizontal Layout to hold Left (Scroll) and Right (Main)
         appLayout = QHBoxLayout()
@@ -289,11 +294,25 @@ class MainWindow(QMainWindow):
     def evaluateExpression(self):
         line = self.expressionLine.text().strip()
         if(line == ""): return
+
+        # Convert to something python can evaluate
         line = line.replace("×", "*")
         line = line.replace("÷", "/")
         line = line.replace("²", "**2")
         line = line.replace("%", "/100")
         line = self.replace_sqrt_symbol(line)
+
+        # Graphing function
+        if line.lower().startswith("graph "):
+            # remove the graph word
+            expression = line[6:]
+
+            # draw graph and display it
+            self.graph_window.plot_expression(expression)
+
+            self.resultLabel.setText(f"Graphing: {expression}")
+            return # return so that rest of code is not executed
+
         result = self.engine.process_input(line)
         if (result == None):
             self.resultLabel.setText("Error")
@@ -336,12 +355,69 @@ class MainWindow(QMainWindow):
     # ------
 
 
-# No command line args
-app = QApplication([])
+class GraphWindow(QWidget):
+    def __init__(self, engine):
+        super().__init__()
+        self.engine = engine
+        self.setWindowTitle("Graphing Window")
+        self.resize(600, 400)
 
-# Make main window
-window = MainWindow()
-window.show()
+        # Create the Matplotlib Figure and Canvas
+        self.figure = Figure()
+        self.canvas = FigureCanvas(self.figure)
+        self.ax = self.figure.add_subplot(111)
 
-# Start event loop
-app.exec()
+        # Layout
+        layout = QVBoxLayout()
+        layout.addWidget(self.canvas)
+        self.setLayout(layout)
+
+    def plot_expression(self, expression, var_name="x"):
+        self.ax.clear() # Clear the old graph
+        
+        # 1. Generate 500 points between -10 and 10
+        x_values = np.linspace(-10, 10, 500)
+        y_values = []
+
+        # Save the user's original variable so we don't overwrite it permanently!
+        original_val = self.engine.variables.get(var_name, None)
+
+        # 2. Trick the engine into calculating every point
+        for x in x_values:
+            self.engine.variables[var_name] = x
+            
+            y = self.engine.calculate(expression)
+            
+            # Handle math errors (like sqrt of a negative number) gracefully
+            if y is None or isinstance(y, complex):
+                y_values.append(np.nan) # np.nan means "draw nothing here"
+            else:
+                y_values.append(y)
+
+        # Restore the original variable
+        if original_val is not None:
+            self.engine.variables[var_name] = original_val
+        else:
+            del self.engine.variables[var_name]
+
+        # 3. Draw the graph
+        self.ax.plot(x_values, y_values, label=f"y = {expression}", color='blue')
+        self.ax.axhline(0, color='black', linewidth=1) # X-axis
+        self.ax.axvline(0, color='black', linewidth=1) # Y-axis
+        self.ax.grid(True, linestyle='--', alpha=0.7)
+        self.ax.legend()
+        
+        self.canvas.draw()
+        self.show() # Show the window
+
+
+if __name__ == "__main__":
+    # No command line args
+    app = QApplication([])
+
+    # Make main window
+    window = MainWindow()
+    window.show()
+
+    # Start event loop
+    app.exec()
