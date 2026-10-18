@@ -16,24 +16,23 @@ OPERATORS = {
 
 class MathEngine:
     def __init__(self):
-        # This is your shared dictionary! 
-        # Your GUI can access this directly via engine.variables
+        # list of variables so that GUI can access it
         self.variables = {
             "pi": math.pi,
             "e": math.e
         }
 
     def process_input(self, user_input):
-        """The GUI should call this function whenever the user presses Enter/Equals"""
+        # GUI calls this function to process all inputs
         
-        # 1. Detect Variable Assignment (e.g., "tax = 100 * 0.05")
+        # 1. Detect Variable Assignment
         if "=" in user_input:
             # Split into exactly two parts at the first '='
             left_side, right_side = user_input.split("=", 1)
             var_name = left_side.strip()
             expression = right_side.strip()
 
-            # Ensure the variable name is valid (e.g. no spaces, doesn't start with a number)
+            # Ensure the variable name is valid
             if not var_name.isidentifier():
                 return "Error: Invalid variable name"
 
@@ -47,7 +46,7 @@ class MathEngine:
             else:
                 return "Error: Invalid math expression"
 
-        # 2. Standard Evaluation (e.g., "5 + tax")
+        # Standard Evaluation
         else:
             result = self.calculate(user_input)
             return result if result is not None else "Error: Invalid math expression"
@@ -64,7 +63,7 @@ class MathEngine:
         if isinstance(node, ast.Constant) and type(node.value) in (int, float):
             return node.value
 
-        # Variables: Look inside self.variables instead of a global dict
+        # Variables: Look inside self.variables for variable names and values
         elif isinstance(node, ast.Name):
             if node.id in self.variables:
                 return self.variables[node.id]
@@ -98,17 +97,4 @@ class MathEngine:
             return math.sqrt(self.evaluate(node.args[0]))
 
         else:
-            raise ValueError("Unsupported expression")
-
-# def addCalculations(name, expression):
-#     if name in calculations:
-#         raise ValueError("That name already exists")
-
-#     calculations[name] = expression
-
-
-# calculations = {}
-#expression = "7+9"
-#solution = calculate(expression)
-
-#print(solution) 
+            raise ValueError("Unsupported expression") 

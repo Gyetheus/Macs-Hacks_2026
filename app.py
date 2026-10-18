@@ -37,34 +37,16 @@ GREEN_BUTTON_STYLE = """
     }
 """
 
-NORMAL_BUTTON_STYLE = """
-    QPushButton {
-        background-color: #2ecc71;
-        color: white;
-        border-radius: 6px;
-        padding: 10px;
-        font-size: 14px;
-        font-weight: bold;
-        border: none;
-    }
-    QPushButton:hover {
-        background-color: #27ae60;
-    }
-    QPushButton:pressed {
-        background-color: #1e8449;
-    }
-"""
-
 # Define our mainWindow class
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Cooler Calculator")
 
-        self.engine = MathEngine()
-        self.graph_window = GraphWindow(self.engine)
+        self.engine = MathEngine() # Calculation engine
+        self.graph_window = GraphWindow(self.engine) # Graphing class
 
-        # 1. Create the overarching Horizontal Layout to hold Left (Scroll) and Right (Main)
+        # Create the overarching Horizontal Layout to hold Left (Scroll) and Right (Main)
         appLayout = QHBoxLayout()
 
         # ==========================================
@@ -72,14 +54,12 @@ class MainWindow(QMainWindow):
         # ==========================================
         variable_scroll = QScrollArea()
         variable_scroll.setWidgetResizable(True)
-        # Optional: Keep the sidebar from taking up too much space
-        # variable_scroll.setMaximumWidth(250) 
 
         # Create the container widget and its layout
         variable_container = QWidget()
-        self.variableLayout = QFormLayout() # QFormLayout is perfect for key-value pairs
+        self.variableLayout = QFormLayout()
 
-        # Populate the variables (Note the .items() added here)
+        # Populate the variables list
         for key, value in self.engine.variables.items():
             key_label = QLabel(f"<b>{key}:</b>")
             value_label = QLabel(str(value))
@@ -114,7 +94,7 @@ class MainWindow(QMainWindow):
         self.resultLabel.setAlignment(Qt.AlignmentFlag.AlignRight)
         mainLayout.addWidget(self.resultLabel)
 
-        # Add the grid (or your calculator widgets) to the main layout
+        # Add the grid to the main layout
         mainLayout.addLayout(gridLayout)
 
         # ==========================================
@@ -123,11 +103,11 @@ class MainWindow(QMainWindow):
         appLayout.addWidget(variable_scroll)  # Added first, so it sits on the left
         appLayout.addLayout(mainLayout)       # Added second, so it sits on the right
 
-        # Finally, set the appLayout as the main layout for your window/widget
+        # set the appLayout as the main widget
         central_widget = QWidget()
         central_widget.setLayout(appLayout)
 
-        # Set this widget as the center of your QMainWindow
+        # Set widget as the center of the window
         self.setCentralWidget(central_widget)
 
         btn = QPushButton()
@@ -156,6 +136,7 @@ class MainWindow(QMainWindow):
         btn.setFont(font)
         btn.clicked.connect(self.backspace_clicked)
         gridLayout.addWidget(btn,0,3)
+
         # Fifth bottom row
         btn = QPushButton("1/x")
         btn.setFont(font)
@@ -265,13 +246,15 @@ class MainWindow(QMainWindow):
     # Call to add operator or number to expression
     def button_clicked(self):
         string = self.expressionLine.text()
-        string2 = self.sender().text()
+        string2 = self.sender().text() # get text from the button that was clicked
+
+        # Convert to something that looks good on screen
         string2 = string2.replace("+/-", "-")
         string2 = string2.replace("√x", "√")
         string2 = string2.replace("x²", "²")
         string2 = string2.replace("1/x", "1/")
         self.expressionLine.setText(string + string2)
-
+    
     def backspace_clicked(self):
         text = self.expressionLine.text()
         text = text[:-1]
@@ -313,6 +296,7 @@ class MainWindow(QMainWindow):
             self.resultLabel.setText(f"Graphing: {expression}")
             return # return so that rest of code is not executed
 
+        # Otherwise process input
         result = self.engine.process_input(line)
         if (result == None):
             self.resultLabel.setText("Error")
@@ -362,12 +346,12 @@ class GraphWindow(QWidget):
         self.setWindowTitle("Graphing Window")
         self.resize(600, 400)
 
-        # Create the Matplotlib Figure and Canvas
+        # Create Matplotlib Figure and Canvas
         self.figure = Figure()
         self.canvas = FigureCanvas(self.figure)
         self.ax = self.figure.add_subplot(111)
 
-        # Layout
+        # Create Layout
         layout = QVBoxLayout()
         layout.addWidget(self.canvas)
         self.setLayout(layout)
@@ -375,35 +359,35 @@ class GraphWindow(QWidget):
     def plot_expression(self, expression, var_name="x"):
         self.ax.clear() # Clear the old graph
         
-        # 1. Generate 500 points between -10 and 10
+        # Generate 500 points between -10 and 10
         x_values = np.linspace(-10, 10, 500)
         y_values = []
 
-        # Save the user's original variable so we don't overwrite it permanently!
+        # Save users original variable so we don't overwrite it
         original_val = self.engine.variables.get(var_name, None)
 
-        # 2. Trick the engine into calculating every point
+        # Have engine calculate every point
         for x in x_values:
             self.engine.variables[var_name] = x
             
             y = self.engine.calculate(expression)
             
-            # Handle math errors (like sqrt of a negative number) gracefully
+            # Handle math errors gracefully
             if y is None or isinstance(y, complex):
-                y_values.append(np.nan) # np.nan means "draw nothing here"
+                y_values.append(np.nan) # draw nothing for error
             else:
                 y_values.append(y)
 
-        # Restore the original variable
+        # Restore the original users variable
         if original_val is not None:
             self.engine.variables[var_name] = original_val
         else:
             del self.engine.variables[var_name]
 
-        # 3. Draw the graph
+        # Draw the graph
         self.ax.plot(x_values, y_values, label=f"y = {expression}", color='blue')
-        self.ax.axhline(0, color='black', linewidth=1) # X-axis
-        self.ax.axvline(0, color='black', linewidth=1) # Y-axis
+        self.ax.axhline(0, color='black', linewidth=1) # x axis
+        self.ax.axvline(0, color='black', linewidth=1) # y axis
         self.ax.grid(True, linestyle='--', alpha=0.7)
         self.ax.legend()
         
